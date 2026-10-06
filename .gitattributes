@@ -1,0 +1,5 @@
+# Единые окончания строк (LF) в репозитории независимо от настроек Git на Windows.
+* text=auto eol=lf
+
+*.zip binary
+*.png binary

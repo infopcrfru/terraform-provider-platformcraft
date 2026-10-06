@@ -1,18 +1,41 @@
-# Binaries for programs and plugins
+# Бинарники и результаты сборки
 *.exe
-*.exe~
 *.dll
 *.so
 *.dylib
-
-# Test binary, built with `go test -c`
 *.test
+/terraform-provider-platformcraft
+/terraform-provider-platformcraft_v*
+bin/
+dist/
 
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
+# Рабочие файлы Terraform/OpenTofu
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfplan
+crash.log
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+dev.tfrc
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# Журналы и временные файлы
+*.log
+*.bak
+*~
+.*.swp
 
-# Go workspace file
-go.work
+# Редакторы и ОС
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,79 @@
+# CI: форматирование, статическая проверка, сборка, модульные тесты и проверка
+# документации docs/. Запускается на каждый push/PR, не требует ни доступа к
+# PlatformCraft, ни секретов. Acceptance-тесты с реальными вызовами API — в
+# acceptance.yml.
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: go mod tidy (go.mod/go.sum соответствуют коду)
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+      - name: gofmt
+        run: |
+          fmt_out="$(gofmt -l .)"
+          if [ -n "$fmt_out" ]; then
+            echo "Следующие файлы не отформатированы (запустите: gofmt -w .):"
+            echo "$fmt_out"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build -v ./...
+
+      - name: go test (модульные; без TF_ACC acceptance-тесты пропускаются)
+        run: go test -v -timeout 5m ./...
+
+  # docs/ генерируется из схемы провайдера, examples/ и templates/ (tfplugindocs)
+  # и публикуется в Terraform Registry. Проверка не даёт закоммитить код, схема
+  # которого разошлась с документацией.
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            tools/go.sum
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_wrapper: false
+
+      - name: go generate (terraform fmt examples/, tfplugindocs generate)
+        run: cd tools && go generate ./...
+
+      - name: docs/ и examples/ соответствуют сгенерированным
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git status --short
+            git diff
+            echo "docs/ или examples/ не соответствуют коду. Выполните в каталоге tools: go generate ./... и закоммитьте изменения."
+            exit 1
+          fi
