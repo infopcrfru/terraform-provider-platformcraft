@@ -15,7 +15,7 @@ terraform {
 provider "platformcraft" {
   # endpoint и region по умолчанию указывают на PlatformCraft.
   # Ключи — в переменных окружения PLATFORMCRAFT_ACCESS_KEY и
-  # PLATFORMCRAFT_SECRET_KEY (README.md, раздел 1.2).
+  # PLATFORMCRAFT_SECRET_KEY (README.md, раздел 1.4).
 }
 
 # Имя бакета уникально во всей системе PlatformCraft, а не только в аккаунте.

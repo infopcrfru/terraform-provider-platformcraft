@@ -40,9 +40,69 @@ provider "platformcraft" {}
 terraform init
 ```
 
-Terraform скачает провайдер из Registry и проверит его подпись.
+Terraform скачает провайдер из Registry и проверит его подпись. Из РФ
+Terraform Registry недоступен — используйте зеркало Yandex Cloud (раздел 1.2).
 
-### 1.2. Ключи доступа
+### 1.2. Установка из РФ: зеркало Yandex Cloud
+
+Добавьте зеркало в файл настроек Terraform CLI: `%APPDATA%\terraform.rc`
+в Windows (обычно `C:\Users\<пользователь>\AppData\Roaming\terraform.rc`)
+или `~/.terraformrc` в Linux/macOS.
+
+```powershell
+notepad "$env:APPDATA\terraform.rc"
+```
+
+```hcl
+provider_installation {
+  network_mirror {
+    url     = "https://terraform-mirror.yandexcloud.net/"
+    include = ["registry.terraform.io/*/*"]
+  }
+  direct {
+    exclude = ["registry.terraform.io/*/*"]
+  }
+}
+```
+
+Сам Terraform тоже можно скачать с
+[зеркала Yandex Cloud](https://hashicorp-releases.yandexcloud.net/terraform/).
+
+После `terraform init` в выводе будет строка
+`Installed infopcrfru/platformcraft v0.1.0 (unauthenticated)`. Так Terraform
+помечает провайдеры из зеркала: GPG-подпись проверяется только при установке
+напрямую из Registry. Дальше целостность провайдера проверяется по
+контрольным суммам в `.terraform.lock.hcl` (раздел 1.3).
+
+Новую версию провайдера зеркало может отдавать не сразу после её выхода. Если
+`terraform init` завершается ошибкой `bad response code: 504`, повторите
+попытку позже.
+
+### 1.3. Работа с нескольких ОС: контрольные суммы в .terraform.lock.hcl
+
+При установке через зеркало `terraform init` записывает в `.terraform.lock.hcl`
+контрольную сумму провайдера только для текущей платформы и выводит
+предупреждение `Incomplete lock file information for providers`. На другой ОС
+(у коллег на Linux или macOS, в CI) `terraform init` с таким lock-файлом
+завершится ошибкой.
+
+Если конфигурацию запускают на нескольких ОС, добавьте контрольные суммы для
+всех нужных платформ — после первого `terraform init` и после каждого
+обновления провайдера (`terraform init -upgrade`):
+
+```powershell
+terraform providers lock -net-mirror="https://terraform-mirror.yandexcloud.net/" -platform=windows_amd64 -platform=linux_amd64 -platform=darwin_arm64
+```
+
+Укажите `-platform` для каждой нужной платформы: `windows_amd64`,
+`linux_amd64`, `linux_arm64`, `darwin_amd64`, `darwin_arm64`. Команда из
+подсказки Terraform, без `-net-mirror`, обращается напрямую к Registry и из РФ
+не сработает.
+
+`.terraform.lock.hcl` коммитьте в репозиторий вместе с конфигурацией;
+каталог `.terraform/` и файлы `*.tfstate` — нет.
+
+### 1.4. Ключи доступа
 
 Ключи создаются в личном кабинете PlatformCraft: **Настройки → Доступы S3 →
 Сгенерировать**. Храните их в переменных окружения, а не в `.tf`:
@@ -59,7 +119,7 @@ export PLATFORMCRAFT_SECRET_KEY="<secret key>"
 
 Переменные `$env:` в PowerShell действуют только в текущем окне.
 
-### 1.3. Параметры провайдера
+### 1.5. Параметры провайдера
 
 ```hcl
 provider "platformcraft" {
@@ -86,7 +146,7 @@ provider "platformcraft" {
 - Если не задан ни один ключ, используется стандартная цепочка AWS SDK
   (`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`, `~/.aws/credentials`).
 
-### 1.4. Журнал HTTP-запросов
+### 1.6. Журнал HTTP-запросов
 
 `PLATFORMCRAFT_HTTP_DEBUG=1` включает журналирование каждого запроса и ответа
 AWS SDK (метод, URL, заголовки, в том числе `x-amz-request-id`). Terraform
@@ -344,8 +404,10 @@ provider_installation {
 с прямыми слэшами. Ключ `infopcrfru/platformcraft` совпадает с `source` в
 `required_providers`. При активном `dev_overrides` Terraform выводит
 предупреждение `Provider development overrides are in effect` — это ожидаемо;
-ограничение `version` для этого провайдера не действует. Чтобы вернуться
-к версии из Registry, удалите блок `dev_overrides`.
+ограничение `version` для этого провайдера не действует. Если в файле уже
+настроено зеркало Yandex Cloud (раздел 1.2), добавьте блок `dev_overrides`
+внутрь того же `provider_installation`. Чтобы вернуться к версии из Registry,
+удалите блок `dev_overrides`.
 
 ### 5.2. Проверки
 
